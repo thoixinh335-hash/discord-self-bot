@@ -11,6 +11,7 @@ import discord
 
 from .config import Config
 from .ai import AIHandler
+from .memory import UserMemory
 
 
 def _build_super_props() -> str:
@@ -44,6 +45,7 @@ class DiscordBot:
         self.bot = discord.Client()
         self.bot.preferred_rtc_regions = ['hongkong', 'singapore', 'sydney', 'japan']
         self.ai = AIHandler()
+        self.memory = UserMemory()
         self._active_guild: int = 0  # Guild ID đang bật auto-reply, 0 = OFF
         self._spam_task: asyncio.Task | None = None  # Task auto-send
         self._spam_target: str = ""  # User bị tag
@@ -668,8 +670,9 @@ class DiscordBot:
             # Thêm context: ai, ở đâu, giới tính
             author_name = message.author.display_name or message.author.name
             gender = self._guess_gender(author_name)
+            is_dm = isinstance(message.channel, discord.DMChannel)
             gender_tag = f" [nữ]" if gender == "female" else f" [nam]" if gender == "male" else ""
-            if isinstance(message.channel, discord.DMChannel):
+            if is_dm:
                 ctx = f"[DM với {author_name}{gender_tag}]"
             else:
                 guild = message.guild.name if message.guild else "Unknown"
@@ -693,8 +696,19 @@ class DiscordBot:
                             "content": f"[{name}]: {msg.content}",
                         })
 
+                # Inject memory context vào history
+                memory_ctx = self.memory.build_context_prompt(
+                    message.author.id, author_name, gender, is_dm
+                )
+                history.insert(0, {"role": "system", "content": memory_ctx})
+
                 # Gọi AI với context
                 reply = await self.ai.chat(f"{ctx}\n{content}", history)
+
+                # Lưu interaction để bot học dần
+                self.memory.add_interaction(
+                    message.author.id, author_name, content
+                )
 
             # Gửi phản hồi (chia nhỏ nếu quá 2000 ký tự)
             if len(reply) > 2000:
