@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pip install PyNaCl)",
+      "PowerShell(python -m pip install PyNaCl)",
+      "WebFetch(domain:github.com)",
+      "PowerShell(pip index versions discord.py-self 2>$null)",
+      "PowerShell(pip show discord.py-self)",
+      "PowerShell(python -m pip show discord.py-self)",
+      "PowerShell(python -m pip install discord.py-self --upgrade --dry-run 2>&1)",
+      "WebFetch(domain:pypi.org)",
+      "PowerShell(python -m pip install git+https://github.com/dolfies/discord.py-self.git --upgrade --dry-run 2>&1)",
+      "Bash(curl -s \"https://api.github.com/repos/dolfies/discord.py-self/commits?per_page=5\")",
+      "PowerShell(python -m pip install git+https://github.com/dolfies/discord.py-self.git --upgrade --no-deps 2>&1)",
+      "PowerShell(python -m pip install discord_protos --upgrade 2>&1)",
+      "Bash(curl -s \"https://api.github.com/repos/dolfies/discord.py-self/issues?state=open&per_page=30\")",
+      "Bash(python -c \"import sys,json; issues=json.load\\(sys.stdin\\); [print\\(f'#{i[\\\\\"number\\\\\"]} {i[\\\\\"title\\\\\"][:120]}'\\) for i in issues]\")",
+      "Bash(curl -s \"https://api.github.com/search/issues?q=repo:dolfies/discord.py-self+DAVE+E2EE+voice+4017&per_page=10\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(f'#{i[\\\\\"number\\\\\"]} [{i[\\\\\"state\\\\\"]}] {i[\\\\\"title\\\\\"][:120]}'\\) for i in data.get\\('items',[]\\)]\")",
+      "Bash(curl -s \"https://api.github.com/repos/dolfies/discord.py-self/issues/917\")",
+      "Bash(python -c \"import sys,json; i=json.load\\(sys.stdin\\); print\\('Title:', i['title']\\); print\\('State:', i['state']\\); print\\('Body:', i['body'][:2000] if i['body'] else 'None'\\); print\\('---'\\); print\\('State reason:', i.get\\('state_reason','?'\\)\\)\")",
+      "Bash(curl -s \"https://api.github.com/repos/dolfies/discord.py-self/issues/917/comments?per_page=20\")",
+      "Bash(python -c \"import sys,json; comments=json.load\\(sys.stdin\\); [print\\(f'--- {c[\\\\\"user\\\\\"][\\\\\"login\\\\\"]} ---\\\\n{c[\\\\\"body\\\\\"][:1500]}\\\\n'\\) for c in comments]\")",
+      "PowerShell(python -m pip install \"discord.py-self[voice]\" 2>&1)",
+      "PowerShell(winget install Rustlang.Rustup 2>&1)",
+      "PowerShell(rustup default stable 2>&1)",
+      "PowerShell(rustup default stable-x86_64-pc-windows-gnu 2>&1)"
+    ]
+  }
+}
