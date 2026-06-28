@@ -51,6 +51,7 @@ class DiscordBot:
         self._spam_delay: float = 0.5  # Delay mặc định (giây)
         self._song_queue: list[dict] = []  # Queue nhạc [{url, title, web_url, duration}]
         self._now_playing: dict | None = None  # Bài đang phát
+        self._msg_cache: set[int] = set()  # Chống double message
         self._patch_library_bugs()
         self._setup_events()
         self._setup_commands()
@@ -96,6 +97,14 @@ class DiscordBot:
 
         @self.bot.event
         async def on_message(message):
+            # Chống double processing
+            if message.id in self._msg_cache:
+                return
+            self._msg_cache.add(message.id)
+            # Giới hạn cache 500 msg
+            if len(self._msg_cache) > 500:
+                self._msg_cache.clear()
+
             # === Parse lệnh prefix (kể cả từ chính mình) ===
             content = message.content or ""
             if content.startswith(Config.BOT_PREFIX):
