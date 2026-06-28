@@ -51,6 +51,7 @@ class DiscordBot:
         self._spam_target: str = ""  # User bị tag
         self._spam_channel_id: int = 0  # Channel gửi
         self._spam_delay: float = 0.5  # Delay mặc định (giây)
+        self._greet_task: asyncio.Task | None = None  # Task tự chào
         self._song_queue: list[dict] = []  # Queue nhạc [{url, title, web_url, duration}]
         self._now_playing: dict | None = None  # Bài đang phát
         self._msg_cache: set[int] = set()  # Chống double message
@@ -248,7 +249,12 @@ class DiscordBot:
             guild_id = message.guild.id if message.guild else 0
             self._active_guild = guild_id
             print(f"[+] Admin {message.author} đã BẬT bot tại guild {guild_id}")
-            await self._reply(message, "✅ **Bot đã BẬT** — auto-reply AI đang hoạt động TOÀN BỘ server này + DM.")
+            await self._reply(message, "✅ **Bot đã BẬT** — auto-reply AI + tự chào mỗi 1-2h.")
+
+            # Start greet loop
+            if self._greet_task:
+                self._greet_task.cancel()
+            self._greet_task = asyncio.create_task(self._greet_loop())
 
     async def _cmd_offbot(self, message):
         """Lệnh !offbot — tắt auto-reply AI"""
@@ -256,8 +262,54 @@ class DiscordBot:
             await self._reply(message, "⚠️ Bot đã đang TẮT sẵn rồi.")
         else:
             self._active_guild = 0
+            if self._greet_task:
+                self._greet_task.cancel()
+                self._greet_task = None
             print(f"[+] Admin {message.author} đã TẮT bot")
             await self._reply(message, "🛑 **Bot đã TẮT** — chỉ nhận lệnh, không auto-reply.")
+
+    async def _greet_loop(self):
+        """Tự động chào mỗi 1-2 tiếng trong guild đang bật"""
+        import random
+        greetings = [
+            "👋 Hi guys, có ai onl không nè~",
+            "🌤 Hôm nay trời đẹp quá, mọi người đâu hết rồi?",
+            "💭 Lướt ngang thấy im ắng quá, ai đó nói gì đi chứ!",
+            "☕ Có ai muốn tâm sự không, bot đang rảnh nè~",
+            "🎵 Ngày mới vui vẻ nha mọi người!",
+            "👀 Bot vừa online lại, có gì hot không?",
+            "✨ Lâu lâu mới thấy mọi người, nhớ quá à~",
+            "💬 Chán quá ai chat với bot đi!",
+            "🌟 Hôm nay có chuyện gì vui không kể bot nghe với!",
+            "🫶 Mọi người ơi bot nhớ mọi người quá!",
+        ]
+        while self._active_guild:
+            # Random 1-2 tiếng
+            delay = random.randint(3600, 7200)
+            await asyncio.sleep(delay)
+
+            if not self._active_guild:
+                break
+
+            try:
+                # Tìm 1 channel text trong guild
+                guild = self.bot.get_guild(self._active_guild)
+                if not guild:
+                    continue
+
+                # Chọn channel đầu tiên có thể nhắn
+                target_channel = None
+                for ch in guild.text_channels:
+                    if ch.permissions_for(guild.me).send_messages:
+                        target_channel = ch
+                        break
+
+                if target_channel:
+                    greet = random.choice(greetings)
+                    await target_channel.send(greet)
+                    print(f"[GREET] Đã chào trong {guild.name} / #{target_channel.name}")
+            except Exception as e:
+                print(f"[GREET] Lỗi: {e}")
 
     async def _cmd_bottreo(self, message):
         """Lệnh !bottreo <voice_channel_id> — bot vào voice channel"""
