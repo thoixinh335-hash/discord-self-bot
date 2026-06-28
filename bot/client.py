@@ -121,8 +121,9 @@ class DiscordBot:
             if message.author.id == self.bot.user.id:
                 return
 
-            # === Auto-reply (chỉ khi bot ON và đúng channel) ===
-            if not self._active_channel or message.channel.id != self._active_channel:
+            # === Auto-reply (chỉ khi bot ON và đúng channel, nhưng DM luôn OK) ===
+            is_dm = isinstance(message.channel, discord.DMChannel)
+            if not is_dm and (not self._active_channel or message.channel.id != self._active_channel):
                 return
 
             should_reply = False
