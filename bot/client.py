@@ -707,9 +707,16 @@ class DiscordBot:
     # ─── Run ────────────────────────────────────────────────────
 
     def run(self):
-        """Chạy bot — login bằng email + password"""
+        """Chạy bot — ưu tiên DISCORD_TOKEN, fallback email/password"""
+        # Ưu tiên token trực tiếp
+        if Config.DISCORD_TOKEN:
+            print(f"[*] Dùng DISCORD_TOKEN: {Config.DISCORD_TOKEN[:25]}...")
+            self.bot.run(Config.DISCORD_TOKEN)
+            return
+
+        # Fallback: lấy token từ email/password
         if not Config.DISCORD_EMAIL or not Config.DISCORD_PASSWORD:
-            print("[!] Lỗi: Thiếu DISCORD_EMAIL + DISCORD_PASSWORD trong .env")
+            print("[!] Lỗi: Thiếu DISCORD_TOKEN hoặc DISCORD_EMAIL + DISCORD_PASSWORD trong .env")
             return
 
         print(f"[*] Đang lấy token Discord bằng email: {Config.DISCORD_EMAIL}")
