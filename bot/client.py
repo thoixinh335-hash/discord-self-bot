@@ -45,6 +45,7 @@ class DiscordBot:
         self.bot.preferred_rtc_regions = ['hongkong', 'singapore', 'sydney', 'japan']
         self.ai = AIHandler()
         self._active_channel: int = 0  # Channel ID đang bật auto-reply, 0 = OFF
+        self._active_guild: int = 0  # Guild ID đang bật auto-reply, 0 = OFF
         self._spam_task: asyncio.Task | None = None  # Task auto-send
         self._spam_target: str = ""  # User bị tag
         self._spam_channel_id: int = 0  # Channel gửi
@@ -82,7 +83,7 @@ class DiscordBot:
     def _setup_events(self):
         @self.bot.event
         async def on_ready():
-            state = "OFF" if not self._active_channel else "ON"
+            state = "OFF" if not self._active_guild else f"ON (guild {self._active_guild})"
             print(f"[+] Đã đăng nhập: {self.bot.user} (ID: {self.bot.user.id})")
             print(f"[+] AI Provider: {Config.AI_PROVIDER}")
             print(f"[+] Bot đang {state} — dùng !onbot để bật")
@@ -121,10 +122,12 @@ class DiscordBot:
             if message.author.id == self.bot.user.id:
                 return
 
-            # === Auto-reply (chỉ khi bot ON và đúng channel, nhưng DM luôn OK) ===
+            # === Auto-reply (chỉ khi bot ON trong guild hoặc DM) ===
             is_dm = isinstance(message.channel, discord.DMChannel)
-            if not is_dm and (not self._active_channel or message.channel.id != self._active_channel):
-                return
+            if not is_dm:
+                guild_id = message.guild.id if message.guild else 0
+                if not self._active_guild or guild_id != self._active_guild:
+                    return
 
             should_reply = False
 
@@ -181,7 +184,7 @@ class DiscordBot:
 
     def _build_help_text(self) -> str:
         """Tạo text cho lệnh !help"""
-        state = "✅ BẬT" if self._active_channel else "❌ TẮT"
+        state = "✅ BẬT" if self._active_guild else "❌ TẮT"
         lines = [
             f"**🤖 Discord AI Bot**",
             f"**Trạng thái:** {state}",
@@ -225,7 +228,7 @@ class DiscordBot:
 
     async def _cmd_status(self, message):
         """Lệnh !status — xem trạng thái bot"""
-        state = "✅ BẬT" if self._active_channel else "❌ TẮT"
+        state = "✅ BẬT" if self._active_guild else "❌ TẮT"
         info = (
             f"**Trạng thái bot**\n"
             f"• Auto-reply: {state}\n"
@@ -237,28 +240,23 @@ class DiscordBot:
         await self._reply(message, info)
 
     async def _cmd_onbot(self, message):
-        """Lệnh !onbot — bật auto-reply AI tại channel hiện tại"""
-        if self._active_channel:
-            await self._reply(message, f"⚠️ Bot đã đang BẬT ở channel <#{self._active_channel}>.")
+        """Lệnh !onbot — bật auto-reply AI tại server hiện tại"""
+        if self._active_guild:
+            await self._reply(message, f"⚠️ Bot đã đang BẬT ở guild <#{self._active_guild}>.")
         else:
-            self._active_channel = message.channel.id
-            print(f"[+] Admin {message.author} đã BẬT bot tại channel {message.channel.id}")
-            await self._reply(
-                message,
-                f"✅ **Bot đã BẬT** tại channel này — auto-reply AI đang hoạt động.",
-            )
+            guild_id = message.guild.id if message.guild else 0
+            self._active_guild = guild_id
+            print(f"[+] Admin {message.author} đã BẬT bot tại guild {guild_id}")
+            await self._reply(message, "✅ **Bot đã BẬT** — auto-reply AI đang hoạt động TOÀN BỘ server này + DM.")
 
     async def _cmd_offbot(self, message):
         """Lệnh !offbot — tắt auto-reply AI"""
-        if not self._active_channel:
+        if not self._active_guild:
             await self._reply(message, "⚠️ Bot đã đang TẮT sẵn rồi.")
         else:
-            self._active_channel = 0
+            self._active_guild = 0
             print(f"[+] Admin {message.author} đã TẮT bot")
-            await self._reply(
-                message,
-                "🛑 **Bot đã TẮT** — chỉ nhận lệnh, không auto-reply.",
-            )
+            await self._reply(message, "🛑 **Bot đã TẮT** — chỉ nhận lệnh, không auto-reply.")
 
     async def _cmd_bottreo(self, message):
         """Lệnh !bottreo <voice_channel_id> — bot vào voice channel"""
