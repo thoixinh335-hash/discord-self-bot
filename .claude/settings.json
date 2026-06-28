@@ -24,7 +24,9 @@
       "PowerShell(python -m pip install \"discord.py-self[voice]\" 2>&1)",
       "PowerShell(winget install Rustlang.Rustup 2>&1)",
       "PowerShell(rustup default stable 2>&1)",
-      "PowerShell(rustup default stable-x86_64-pc-windows-gnu 2>&1)"
+      "PowerShell(rustup default stable-x86_64-pc-windows-gnu 2>&1)",
+      "Bash(curl -s -H \"Authorization: token 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\" -H \"Accept: application/vnd.github+json\" https://api.github.com/user/repos -d '{\"name\":\"discord-self-bot\",\"private\":true,\"auto_init\":false}')",
+      "Bash(python -c \"import sys,json; r=json.load\\(sys.stdin\\); print\\('OK:', r.get\\('html_url','FAIL: '+str\\(r\\)[:200]\\)\\)\")"
     ]
   }
 }
