@@ -44,7 +44,6 @@ class DiscordBot:
         self.bot = discord.Client()
         self.bot.preferred_rtc_regions = ['hongkong', 'singapore', 'sydney', 'japan']
         self.ai = AIHandler()
-        self._active_channel: int = 0  # Channel ID đang bật auto-reply, 0 = OFF
         self._active_guild: int = 0  # Guild ID đang bật auto-reply, 0 = OFF
         self._spam_task: asyncio.Task | None = None  # Task auto-send
         self._spam_target: str = ""  # User bị tag
