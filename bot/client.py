@@ -42,6 +42,7 @@ class DiscordBot:
 
     def __init__(self):
         self.bot = discord.Client()
+        self.bot.preferred_rtc_regions = ['hongkong', 'singapore', 'sydney', 'japan']
         self.ai = AIHandler()
         self._active_channel: int = 0  # Channel ID đang bật auto-reply, 0 = OFF
         self._spam_task: asyncio.Task | None = None  # Task auto-send
