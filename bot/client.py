@@ -665,14 +665,16 @@ class DiscordBot:
             if not content:
                 content = "Xin chào!"  # mặc định nếu chỉ tag không
 
-            # Thêm context: ai, ở đâu
+            # Thêm context: ai, ở đâu, giới tính
             author_name = message.author.display_name or message.author.name
+            gender = self._guess_gender(author_name)
+            gender_tag = f" [nữ]" if gender == "female" else f" [nam]" if gender == "male" else ""
             if isinstance(message.channel, discord.DMChannel):
-                ctx = f"[DM với {author_name}]"
+                ctx = f"[DM với {author_name}{gender_tag}]"
             else:
                 guild = message.guild.name if message.guild else "Unknown"
                 channel = message.channel.name if hasattr(message.channel, 'name') else "Unknown"
-                ctx = f"[{guild} / #{channel} / {author_name}]"
+                ctx = f"[{guild} / #{channel} / {author_name}{gender_tag}]"
 
             # Typing indicator
             async with message.channel.typing():
@@ -711,6 +713,48 @@ class DiscordBot:
                 await self._reply(message, f"❌ Lỗi: {str(e)[:100]}")
             except Exception:
                 pass
+
+    @staticmethod
+    def _guess_gender(name: str) -> str:
+        """Đoán giới tính từ tên tiếng Việt"""
+        # Tách tên chính (từ cuối cùng)
+        parts = name.strip().lower().split()
+        if not parts:
+            return "unknown"
+        last = parts[-1]
+
+        # Tên nữ rõ ràng (Vietnamese female-only names)
+        female = {
+            "hương", "trang", "thảo", "ngọc", "nhi", "vy", "ly", "hằng",
+            "mai", "phương", "hà", "hiền", "yến", "thư", "uyên", "my",
+            "châu", "nhung", "hân", "trâm", "thuý", "thúy", "thuỳ", "thùy",
+            "thương", "phụng", "loan", "diệu", "diễm", "kiều", "lan",
+            "lài", "lệ", "mơ", "mộng", "nga", "ngân", "nguyệt", "quỳnh",
+            "sen", "tâm", "tiên", "tuyết", "vân", "xuân", "đào", "hạnh",
+            "bích", "cẩm", "diệp", "dung", "giang", "hồng", "huệ",
+            "khánh", "lam", "liễu", "lụa", "mến", "mỹ", "oanh", "phi",
+            "quyên", "sương", "thắm", "thơ", "trinh", "tú", "tường",
+            "vi", "vui",
+        }
+
+        # Tên nam rõ ràng (Vietnamese male-only names)
+        male = {
+            "huy", "đức", "khang", "phúc", "quân", "tùng", "dũng",
+            "tuấn", "phong", "sơn", "nam", "dương", "hải", "hiếu",
+            "hoàng", "hùng", "khải", "khoa", "long", "nghĩa", "phát",
+            "quang", "quốc", "thắng", "thành", "thiện", "tiến", "trung",
+            "văn", "vũ", "bảo", "cường", "đạt", "hào", "hậu", "hòa",
+            "kiên", "lâm", "lộc", "luân", "mạnh", "minh", "nhật",
+            "phi", "quý", "sang", "tài", "thái", "thịnh", "toàn",
+            "trí", "việt", "vương", "trọng", "hoài",
+        }
+
+        # Ưu tiên tên NỮ (tránh nhầm trai thành gái)
+        if last in female and last not in male:
+            return "female"
+        if last in male and last not in female:
+            return "male"
+        return "unknown"
 
     # ─── Run ────────────────────────────────────────────────────
 
