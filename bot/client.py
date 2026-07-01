@@ -655,7 +655,8 @@ class DiscordBot:
         )
 
     async def _spam_ai_loop(self, target_name: str):
-        """Loop AI tự sinh câu, gửi liên tục"""
+        """Loop AI tự sinh câu với delay chính xác"""
+        import time
         prompt = (
             f"Bạn đang nói chuyện với một cô gái tên {target_name}. "
             "Mỗi lần hãy nghĩ ra 1 câu nhắn ngắn gọn (1-2 câu) bằng tiếng Việt, "
@@ -664,10 +665,17 @@ class DiscordBot:
         )
         used: list[str] = []
         try:
+            next_time = time.perf_counter()
             while True:
                 channel = self.bot.get_channel(self._spam_channel_id)
                 if not channel:
                     break
+                # Đợi đến đúng thời điểm
+                now = time.perf_counter()
+                wait = next_time - now
+                if wait > 0:
+                    await asyncio.sleep(wait)
+
                 # Gọi AI sinh câu
                 reply = await self.ai.chat(
                     f"Nghĩ 1 câu mới để nhắn với {target_name}. "
@@ -678,7 +686,7 @@ class DiscordBot:
                 used.append(reply)
                 text = f"{self._spam_target} {reply}"
                 await channel.send(text)
-                await asyncio.sleep(self._spam_delay)
+                next_time = time.perf_counter() + self._spam_delay
         except asyncio.CancelledError:
             print("[SPAM AI] Task bị hủy")
         except Exception as e:
@@ -698,18 +706,26 @@ class DiscordBot:
         await self._reply(message, "🛑 Đã dừng auto-send.")
 
     async def _spam_loop(self, lines: list[str]):
-        """Loop gửi từng dòng, hết file quay lại đầu"""
+        """Loop gửi từng dòng với delay chính xác (tính cả thời gian send)"""
+        import time
         idx = 0
         try:
+            next_time = time.perf_counter()
             while True:
                 channel = self.bot.get_channel(self._spam_channel_id)
                 if not channel:
                     break
+                # Đợi đến đúng thời điểm cần gửi
+                now = time.perf_counter()
+                wait = next_time - now
+                if wait > 0:
+                    await asyncio.sleep(wait)
+
                 line = lines[idx]
                 text = f"{self._spam_target} {line}"
                 await channel.send(text)
                 idx = (idx + 1) % len(lines)
-                await asyncio.sleep(self._spam_delay)
+                next_time = time.perf_counter() + self._spam_delay
         except asyncio.CancelledError:
             print("[SPAM] Task bị hủy")
         except Exception as e:
