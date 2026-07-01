@@ -48,7 +48,7 @@ class DiscordBot:
         self.memory = UserMemory()
         self._active_guild: int = 0  # Guild ID đang bật auto-reply, 0 = OFF
         self._spam_task: asyncio.Task | None = None  # Task auto-send
-        self._spam_target: str = ""  # User bị tag
+        self._spam_targets: list[str] = []  # Users bị tag
         self._spam_channel_id: int = 0  # Channel gửi
         self._spam_delay: float = 0.5  # Delay mặc định (giây)
         self._greet_task: asyncio.Task | None = None  # Task tự chào
@@ -570,28 +570,31 @@ class DiscordBot:
     # ─── Attach / Detach (spam auto) ──────────────────────────
 
     async def _cmd_attach(self, message):
-        """Lệnh !attach @user [delay_giây] — gửi auto theo file attach.txt"""
+        """Lệnh !attach @user1 @user2 ... [delay] — spam nhiều người cùng lúc"""
         if self._spam_task:
             await self._reply(message, "⚠️ Đang spam rồi, dùng `!detach` để dừng trước.")
             return
 
-        # Lấy user bị tag
         if not message.mentions:
-            await self._reply(message, "❌ Phải tag 1 người. VD: `!attach @Tên 0.5`")
+            await self._reply(message, "❌ Phải tag ít nhất 1 người. VD: `!attach @Tên1 @Tên2 0.1`")
             return
-        target = message.mentions[0]
-        self._spam_target = target.mention
+
+        # Lấy tất cả mentions làm target
+        targets = message.mentions
+        self._spam_targets = [t.mention for t in targets]
         self._spam_channel_id = message.channel.id
 
-        # Parse delay (mặc định 0.1s)
+        # Parse delay từ từ cuối cùng không phải mention
         parts = message.content.split()
         delay = 0.1
-        if len(parts) >= 3:
-            try:
-                delay = float(parts[2])
-                delay = max(0.02, min(delay, 60.0))  # giới hạn 0.02s - 60s
-            except ValueError:
-                pass  # giữ mặc định
+        for p in reversed(parts):
+            if not p.startswith("<@"):
+                try:
+                    delay = float(p)
+                    delay = max(0.02, min(delay, 60.0))
+                except ValueError:
+                    pass
+                break
 
         self._spam_delay = delay
 
@@ -601,7 +604,7 @@ class DiscordBot:
             "attach.txt",
         )
         if not os.path.exists(file_path):
-            await self._reply(message, "❌ Không tìm thấy `attach.txt`. Tạo file này trong thư mục bot.")
+            await self._reply(message, "❌ Không tìm thấy `attach.txt`.")
             return
 
         with open(file_path, "r", encoding="utf-8") as f:
@@ -611,47 +614,50 @@ class DiscordBot:
             await self._reply(message, "❌ `attach.txt` trống.")
             return
 
-        # Bắt đầu loop
-        self._spam_task = asyncio.create_task(self._spam_loop(lines))
-        print(f"[SPAM] Bắt đầu spam {len(lines)} dòng → {target.name} (delay={delay}s)")
+        self._spam_task = asyncio.create_task(self._spam_loop_multi(lines))
+        names = ", ".join(t.display_name for t in targets)
+        print(f"[SPAM] Bắt đầu spam {len(lines)} dòng → {len(targets)} người ({names}), delay={delay}s")
         await self._reply(
             message,
-            f"✅ Bắt đầu gửi {len(lines)} dòng → {target.mention}\n"
-            f"⏱ Delay: **{delay}s** | Dùng `!detach` để dừng.",
+            f"✅ Bắt đầu gửi {len(lines)} dòng → **{len(targets)}** người\n"
+            f"👤 {names}\n⏱ Delay: **{delay}s** | `!detach` để dừng.",
         )
 
     async def _cmd_attachai(self, message):
-        """Lệnh !attachai @user [delay_giây] — AI tự nghĩ câu để gửi"""
+        """Lệnh !attachai @user1 @user2 ... [delay] — AI spam nhiều người"""
         if self._spam_task:
             await self._reply(message, "⚠️ Đang spam rồi, dùng `!detach` để dừng trước.")
             return
 
         if not message.mentions:
-            await self._reply(message, "❌ Phải tag 1 người. VD: `!attachai @Tên 2.5`")
+            await self._reply(message, "❌ Phải tag ít nhất 1 người. VD: `!attachai @Tên1 @Tên2 3`")
             return
 
-        target = message.mentions[0]
-        self._spam_target = target.mention
+        targets = message.mentions
+        self._spam_targets = [t.mention for t in targets]
         self._spam_channel_id = message.channel.id
 
-        # Parse delay (mặc định 3s)
+        # Parse delay từ từ cuối không phải mention
         parts = message.content.split()
         delay = 3.0
-        if len(parts) >= 3:
-            try:
-                delay = float(parts[2])
-                delay = max(0.5, min(delay, 60.0))  # AI cần delay tối thiểu 0.5s
-            except ValueError:
-                pass
+        for p in reversed(parts):
+            if not p.startswith("<@"):
+                try:
+                    delay = float(p)
+                    delay = max(0.5, min(delay, 60.0))
+                except ValueError:
+                    pass
+                break
 
         self._spam_delay = delay
 
-        self._spam_task = asyncio.create_task(self._spam_ai_loop(target.name))
-        print(f"[SPAM AI] Bắt đầu spam AI → {target.name} (delay={delay}s)")
+        self._spam_task = asyncio.create_task(self._spam_ai_loop(targets[0].name))
+        names = ", ".join(t.display_name for t in targets)
+        print(f"[SPAM AI] Bắt đầu spam AI → {len(targets)} người ({names}), delay={delay}s")
         await self._reply(
             message,
-            f"🤖 AI bắt đầu tự viết câu → {target.mention}\n"
-            f"⏱ Delay: **{delay}s** | Dùng `!detach` để dừng.",
+            f"🤖 AI bắt đầu tự viết câu → **{len(targets)}** người\n"
+            f"👤 {names}\n⏱ Delay: **{delay}s** | `!detach` để dừng.",
         )
 
     async def _spam_ai_loop(self, target_name: str):
@@ -684,8 +690,11 @@ class DiscordBot:
                 )
                 reply = reply.strip().strip('"').strip("'")
                 used.append(reply)
-                text = f"{self._spam_target} {reply}"
-                await channel.send(text)
+                # Gửi cho tất cả targets
+                for target_mention in self._spam_targets:
+                    text = f"{target_mention} {reply}"
+                    await channel.send(text)
+                    await asyncio.sleep(0.05)
                 next_time = time.perf_counter() + self._spam_delay
         except asyncio.CancelledError:
             print("[SPAM AI] Task bị hủy")
@@ -699,31 +708,34 @@ class DiscordBot:
             return
         self._spam_task.cancel()
         self._spam_task = None
-        self._spam_target = ""
+        self._spam_targets = []
         self._spam_channel_id = 0
         self._spam_delay = 0.5
         print("[SPAM] Đã dừng bởi admin")
         await self._reply(message, "🛑 Đã dừng auto-send.")
 
-    async def _spam_loop(self, lines: list[str]):
-        """Loop gửi từng dòng với delay chính xác (tính cả thời gian send)"""
+    async def _spam_loop_multi(self, lines: list[str]):
+        """Loop gửi từng dòng cho nhiều người với delay chính xác"""
         import time
         idx = 0
+        targets = self._spam_targets
         try:
             next_time = time.perf_counter()
             while True:
                 channel = self.bot.get_channel(self._spam_channel_id)
                 if not channel:
                     break
-                # Đợi đến đúng thời điểm cần gửi
                 now = time.perf_counter()
                 wait = next_time - now
                 if wait > 0:
                     await asyncio.sleep(wait)
 
                 line = lines[idx]
-                text = f"{self._spam_target} {line}"
-                await channel.send(text)
+                # Gửi cho từng target riêng (cách nhau 50ms tránh rate limit)
+                for i, t in enumerate(targets):
+                    await channel.send(f"{t} {line}")
+                    if i < len(targets) - 1:
+                        await asyncio.sleep(0.05)
                 idx = (idx + 1) % len(lines)
                 next_time = time.perf_counter() + self._spam_delay
         except asyncio.CancelledError:
