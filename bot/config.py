@@ -29,6 +29,10 @@ class Config:
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama3-70b-8192")
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
 
+    # DeepSeek (OpenAI-compatible, miễn phí không giới hạn)
+    DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_MODEL: str = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+
     # Gemini
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
@@ -88,9 +92,11 @@ class Config:
             errors.append("Thiếu OPENAI_API_KEY (AI_PROVIDER=openai)")
         if cls.AI_PROVIDER == "groq" and not cls.GROQ_API_KEY:
             errors.append("Thiếu GROQ_API_KEY (AI_PROVIDER=groq)")
+        if cls.AI_PROVIDER == "deepseek" and not cls.DEEPSEEK_API_KEY:
+            errors.append("Thiếu DEEPSEEK_API_KEY (AI_PROVIDER=deepseek)")
         if cls.AI_PROVIDER == "gemini" and not cls.GEMINI_API_KEY:
             errors.append("Thiếu GEMINI_API_KEY (AI_PROVIDER=gemini)")
-        if cls.AI_PROVIDER not in ("openai", "groq", "gemini"):
+        if cls.AI_PROVIDER not in ("openai", "groq", "gemini", "deepseek"):
             errors.append(f"AI_PROVIDER không hợp lệ: {cls.AI_PROVIDER}")
         return errors
 

@@ -269,9 +269,9 @@ class DiscordBot:
             await self._reply(message, "🛑 **Bot đã TẮT** — chỉ nhận lệnh, không auto-reply.")
 
     async def _greet_loop(self):
-        """Tự động chào mỗi 1-2 tiếng trong guild đang bật"""
+        """Tự động chào mỗi 1-2 tiếng trong guild + DM cho người quen"""
         import random
-        greetings = [
+        server_greetings = [
             "👋 Hi guys, có ai onl không nè~",
             "🌤 Hôm nay trời đẹp quá, mọi người đâu hết rồi?",
             "💭 Lướt ngang thấy im ắng quá, ai đó nói gì đi chứ!",
@@ -283,31 +283,43 @@ class DiscordBot:
             "🌟 Hôm nay có chuyện gì vui không kể bot nghe với!",
             "🫶 Mọi người ơi bot nhớ mọi người quá!",
         ]
+        dm_greetings = [
+            "👋 Hi {name}, lâu rồi không nói chuyện, bot nhớ {name} quá~",
+            "🌤 Chào buổi sáng {name}! Hôm nay thế nào rồi?",
+            "💬 {name} ơi, đang làm gì đó? Kể bot nghe với!",
+            "✨ Bot vừa nghĩ về {name} nè, khỏe không?",
+            "🫶 {name} à, lâu lâu bot mới thấy {name} onl đó!",
+        ]
+
         while self._active_guild:
-            # Random 1-2 tiếng
             delay = random.randint(3600, 7200)
             await asyncio.sleep(delay)
-
             if not self._active_guild:
                 break
 
             try:
-                # Tìm 1 channel text trong guild
+                # 1. Chào server
                 guild = self.bot.get_guild(self._active_guild)
-                if not guild:
-                    continue
+                if guild:
+                    for ch in guild.text_channels:
+                        if ch.permissions_for(guild.me).send_messages:
+                            await ch.send(random.choice(server_greetings))
+                            print(f"[GREET] Server: {guild.name} / #{ch.name}")
+                            break
 
-                # Chọn channel đầu tiên có thể nhắn
-                target_channel = None
-                for ch in guild.text_channels:
-                    if ch.permissions_for(guild.me).send_messages:
-                        target_channel = ch
-                        break
+                # 2. DM 1 người random từ memory
+                users = list(self.memory._data.keys())
+                if users:
+                    uid = int(random.choice(users))
+                    profile = self.memory._data[str(uid)]
+                    if profile.get("interactions", 0) >= 3:  # Chỉ DM người đã chat ≥ 3 lần
+                        user = self.bot.get_user(uid)
+                        if user:
+                            name = profile.get("name", user.display_name or user.name)
+                            greet = random.choice(dm_greetings).replace("{name}", name)
+                            await user.send(greet)
+                            print(f"[GREET] DM: {name}")
 
-                if target_channel:
-                    greet = random.choice(greetings)
-                    await target_channel.send(greet)
-                    print(f"[GREET] Đã chào trong {guild.name} / #{target_channel.name}")
             except Exception as e:
                 print(f"[GREET] Lỗi: {e}")
 
