@@ -583,13 +583,13 @@ class DiscordBot:
         self._spam_target = target.mention
         self._spam_channel_id = message.channel.id
 
-        # Parse delay (mặc định 0.5s)
+        # Parse delay (mặc định 0.1s)
         parts = message.content.split()
-        delay = 0.5
+        delay = 0.1
         if len(parts) >= 3:
             try:
                 delay = float(parts[2])
-                delay = max(0.05, min(delay, 60.0))  # giới hạn 0.05s - 60s
+                delay = max(0.02, min(delay, 60.0))  # giới hạn 0.02s - 60s
             except ValueError:
                 pass  # giữ mặc định
 
